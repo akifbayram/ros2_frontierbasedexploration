@@ -7,9 +7,9 @@ import numpy as np
 import heapq , math , random , yaml
 import scipy.interpolate as si
 import sys , threading , time
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
-
-with open("src/autonomous_exploration/config/params.yaml", 'r') as file:
+with open("autonomous_exploration/config/params.yaml", 'r') as file:
     params = yaml.load(file, Loader=yaml.FullLoader)
 
 lookahead_distance = params["lookahead_distance"]
@@ -17,7 +17,11 @@ speed = params["speed"]
 expansion_size = params["expansion_size"]
 target_error = params["target_error"]
 robot_r = params["robot_r"]
-
+best_effort_qos = QoSProfile(
+    reliability=QoSReliabilityPolicy.BEST_EFFORT,
+    history=QoSHistoryPolicy.KEEP_LAST,  
+    depth=10  
+)
 pathGlobal = 0
 
 def euler_from_quaternion(x,y,z,w):
@@ -332,7 +336,12 @@ class navigationControl(Node):
         super().__init__('Exploration')
         self.subscription = self.create_subscription(OccupancyGrid,'map',self.map_callback,10)
         self.subscription = self.create_subscription(Odometry,'odom',self.odom_callback,10)
-        self.subscription = self.create_subscription(LaserScan,'scan',self.scan_callback,10)
+        self.subscription = self.create_subscription(
+            LaserScan,
+            'scan',
+            self.scan_callback,
+            best_effort_qos
+        ) 
         self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
         print("[BILGI] KESİF MODU AKTİF")
         self.kesif = True
