@@ -246,7 +246,7 @@ def findClosestGroup(matrix,groups, current,resolution,originX,originY):
     distances = []
     paths = []
     score = []
-    max_score = -1 #max score index
+    max_score = -1 # max score index
     for i in range(len(groups)):
         middle = calculate_centroid([p[0] for p in groups[i][1]],[p[1] for p in groups[i][1]]) 
         path = astar(matrix, current, middle)
@@ -298,16 +298,16 @@ def costmap(data,width,height,resolution):
     return data
 
 def exploration(data,width,height,resolution,column,row,originX,originY):
-        global pathGlobal #Global degisken
+        global pathGlobal # Global degisken
         data = costmap(data,width,height,resolution) #Engelleri genislet
-        data[row][column] = 0 #Robot Anlık Konum
+        data[row][column] = 0 # Robot Anlık Konum
         data[data > 5] = 1 # 0 olanlar gidilebilir yer, 100 olanlar kesin engel
-        data = frontierB(data) #Sınır noktaları bul
+        data = frontierB(data) # Sınır noktaları bul
         data,groups = assign_groups(data) #Sınır noktaları gruplandır
-        groups = fGroups(groups) #Grupları küçükten büyüğe sırala. En buyuk 5 grubu al
-        if len(groups) == 0: #Grup yoksa kesif tamamlandı
+        groups = fGroups(groups) # Grupları küçükten büyüğe sırala. En buyuk 5 grubu al
+        if len(groups) == 0: # Grup yoksa kesif tamamlandı
             path = -1
-        else: #Grup varsa en yakın grubu bul
+        else: # Grup varsa en yakın grubu bul
             data[data < 0] = 1 #-0.05 olanlar bilinmeyen yer. Gidilemez olarak isaretle. 0 = gidilebilir, 1 = gidilemez.
             path = findClosestGroup(data,groups,(row,column),resolution,originX,originY) #En yakın grubu bul
             if path != None: #Yol varsa BSpline ile düzelt
@@ -344,13 +344,15 @@ class navigationControl(Node):
         print("[INFO] EXPLORATION MODE ACTIVE")
         self.kesif = True
         threading.Thread(target=self.exp).start() #Kesif fonksiyonunu thread olarak calistirir.
-        self.path_publisher = self.create_publisher(Path, 'path', 10)
+        self.path_publisher = self.create_publisher(Path, 'plan', 10)
         self.goal_publisher = self.create_publisher(PoseStamped, 'goal_pose', 10)
-        self.marker_publisher = self.create_publisher(Marker, 'marker', 10)
+        self.marker_publisher = self.create_publisher(Marker, 'marker', 10)        
+        self.robot_path_publisher = self.create_publisher(Path, 'robot_path', 10)
+        self.robot_path = []
 
     def exp(self):
         twist = Twist()
-        while True: #Sensor verileri gelene kadar bekle.
+        while True: # Sensor verileri gelene kadar bekle.
             if not hasattr(self,'map_data') or not hasattr(self,'odom_data') or not hasattr(self,'scan_data'):
                 time.sleep(0.1)
                 continue
@@ -385,7 +387,7 @@ class navigationControl(Node):
                 self.t = threading.Timer(t,self.target_callback) #Hedefe az bir sure kala kesif fonksiyonunu calistirir.
                 self.t.start()
             
-            #Rota Takip Blok Baslangic
+            # Rota Takip Blok Baslangic
             else:
                 v , w = localControl(self.scan)
                 if v == None:
@@ -395,12 +397,12 @@ class navigationControl(Node):
                     w = 0.0
                     self.kesif = True
                     print("[INFO] TARGET REACHED")
-                    self.t.join() #Thread bitene kadar bekle.
+                    self.t.join() # Thread bitene kadar bekle.
                 twist.linear.x = v
                 twist.angular.z = w
                 self.publisher.publish(twist)
                 time.sleep(0.1)
-            #Rota Takip Blok Bitis
+            # Rota Takip Blok Bitis
 
     def target_callback(self):
         exploration(self.data,self.width,self.height,self.resolution,self.c,self.r,self.originX,self.originY)
@@ -418,16 +420,23 @@ class navigationControl(Node):
         self.height = self.map_data.info.height
         self.data = self.map_data.data
 
-    def odom_callback(self,msg):
+    def odom_callback(self, msg):
         self.odom_data = msg
         self.x = msg.pose.pose.position.x
         self.y = msg.pose.pose.position.y
-        self.yaw = euler_from_quaternion(msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,
-        msg.pose.pose.orientation.z,msg.pose.pose.orientation.w)
+        self.yaw = euler_from_quaternion(
+            msg.pose.pose.orientation.x,
+            msg.pose.pose.orientation.y,
+            msg.pose.pose.orientation.z,
+            msg.pose.pose.orientation.w
+        )
+
+        self.robot_path.append((self.x, self.y))
+        self.publish_robot_path()
 
     def publish_path(self, path):
         path_msg = Path()
-        path_msg.header.frame_id = 'map'  # Set the appropriate frame ID
+        path_msg.header.frame_id = 'map'
         path_msg.header.stamp = self.get_clock().now().to_msg()
         poses = []
         for p in path:
@@ -437,20 +446,18 @@ class navigationControl(Node):
             pose.pose.position.x = p[0]
             pose.pose.position.y = p[1]
             pose.pose.position.z = 0.0
-            # Orientation can be set if needed; here we leave it default
             poses.append(pose)
         path_msg.poses = poses
         self.path_publisher.publish(path_msg)
 
     def publish_goal(self, goal_x, goal_y):
         goal_msg = PoseStamped()
-        goal_msg.header.frame_id = 'map'  # Set the appropriate frame ID
+        goal_msg.header.frame_id = 'map' 
         goal_msg.header.stamp = self.get_clock().now().to_msg()
         goal_msg.pose.position.x = goal_x
         goal_msg.pose.position.y = goal_y
         goal_msg.pose.position.z = 0.0
-        # Optionally, set the orientation if needed
-        goal_msg.pose.orientation.w = 1.0  # Represents no rotation
+        goal_msg.pose.orientation.w = 1.0 
         self.goal_publisher.publish(goal_msg)
 
     def publish_goal_marker(self, goal_x, goal_y):
@@ -459,20 +466,37 @@ class navigationControl(Node):
         marker.header.stamp = self.get_clock().now().to_msg()
         marker.ns = 'goal'
         marker.id = 0
-        marker.type = Marker.SPHERE  # Choose the desired shape
+        marker.type = Marker.SPHERE
         marker.action = Marker.ADD
         marker.pose.position.x = goal_x
         marker.pose.position.y = goal_y
         marker.pose.position.z = 0.0
         marker.pose.orientation.w = 1.0
-        marker.scale.x = 0.2  # Adjust the size
+        marker.scale.x = 0.2
         marker.scale.y = 0.2
         marker.scale.z = 0.2
-        marker.color.a = 1.0  # Don't forget to set the alpha!
+        marker.color.a = 1.0 
         marker.color.r = 1.0
         marker.color.g = 0.0
         marker.color.b = 0.0
         self.marker_publisher.publish(marker)
+
+    def publish_robot_path(self):
+        path_msg = Path()
+        path_msg.header.frame_id = 'map'
+        path_msg.header.stamp = self.get_clock().now().to_msg()
+        poses = []
+        for p in self.robot_path:
+            pose = PoseStamped()
+            pose.header.frame_id = 'map'
+            pose.header.stamp = path_msg.header.stamp
+            pose.pose.position.x = p[0]
+            pose.pose.position.y = p[1]
+            pose.pose.position.z = 0.0
+            pose.pose.orientation.w = 1.0 
+            poses.append(pose)
+        path_msg.poses = poses
+        self.robot_path_publisher.publish(path_msg)
 
 def main(args=None):
     rclpy.init(args=args)
