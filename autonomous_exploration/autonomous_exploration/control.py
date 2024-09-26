@@ -338,17 +338,13 @@ class navigationControl(Node):
         super().__init__('Exploration')
         self.subscription = self.create_subscription(OccupancyGrid,'map',self.map_callback,10)
         self.subscription = self.create_subscription(Odometry,'odom',self.odom_callback,10)
-        self.subscription = self.create_subscription(
-            LaserScan,
-            'scan',
-            self.scan_callback,
-            best_effort_qos
-        ) 
+        self.subscription = self.create_subscription(LaserScan,'scan',self.scan_callback,best_effort_qos) 
         self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
         print("[INFO] EXPLORATION MODE ACTIVE")
         self.kesif = True
         threading.Thread(target=self.exp).start() #Kesif fonksiyonunu thread olarak calistirir.
         self.path_publisher = self.create_publisher(Path, 'path', 10)
+        self.goal_publisher = self.create_publisher(PoseStamped, 'goal_pose', 10)
         
     def exp(self):
         twist = Twist()
@@ -367,6 +363,11 @@ class navigationControl(Node):
                 if isinstance(self.path, int) and self.path == -1:
                     print("[INFO] EXPLORATION COMPLETED")
                     sys.exit()
+                else:
+                    # Publish the goal
+                    goal_x = self.path[-1][0]
+                    goal_y = self.path[-1][1]
+                    self.publish_goal(goal_x, goal_y)                
                 self.c = int((self.path[-1][0] - self.originX)/self.resolution) 
                 self.r = int((self.path[-1][1] - self.originY)/self.resolution) 
                 self.kesif = False
@@ -437,6 +438,17 @@ class navigationControl(Node):
             poses.append(pose)
         path_msg.poses = poses
         self.path_publisher.publish(path_msg)
+
+    def publish_goal(self, goal_x, goal_y):
+        goal_msg = PoseStamped()
+        goal_msg.header.frame_id = 'map'  # Set the appropriate frame ID
+        goal_msg.header.stamp = self.get_clock().now().to_msg()
+        goal_msg.pose.position.x = goal_x
+        goal_msg.pose.position.y = goal_y
+        goal_msg.pose.position.z = 0.0
+        # Optionally, set the orientation if needed
+        goal_msg.pose.orientation.w = 1.0  # Represents no rotation
+        self.goal_publisher.publish(goal_msg)
 
 
 
