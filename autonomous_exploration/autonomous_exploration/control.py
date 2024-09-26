@@ -8,6 +8,8 @@ import heapq , math , random , yaml
 import scipy.interpolate as si
 import sys , threading , time
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
+from nav_msgs.msg import Path
+from geometry_msgs.msg import PoseStamped
 
 with open("autonomous_exploration/config/params.yaml", 'r') as file:
     params = yaml.load(file, Loader=yaml.FullLoader)
@@ -346,6 +348,7 @@ class navigationControl(Node):
         print("[INFO] EXPLORATION MODE ACTIVE")
         self.kesif = True
         threading.Thread(target=self.exp).start() #Kesif fonksiyonunu thread olarak calistirir.
+        self.path_publisher = self.create_publisher(Path, 'path', 10)
         
     def exp(self):
         twist = Twist()
@@ -367,6 +370,10 @@ class navigationControl(Node):
                 self.c = int((self.path[-1][0] - self.originX)/self.resolution) 
                 self.r = int((self.path[-1][1] - self.originY)/self.resolution) 
                 self.kesif = False
+
+                self.path = pathGlobal
+                self.publish_path(self.path)
+
                 self.i = 0
                 print("[INFO] NEW TARGET ASSIGNED")
                 t = pathLength(self.path)/speed
@@ -413,6 +420,24 @@ class navigationControl(Node):
         self.y = msg.pose.pose.position.y
         self.yaw = euler_from_quaternion(msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,
         msg.pose.pose.orientation.z,msg.pose.pose.orientation.w)
+
+    def publish_path(self, path):
+        path_msg = Path()
+        path_msg.header.frame_id = 'map'  # Set the appropriate frame ID
+        path_msg.header.stamp = self.get_clock().now().to_msg()
+        poses = []
+        for p in path:
+            pose = PoseStamped()
+            pose.header.frame_id = 'map'
+            pose.header.stamp = path_msg.header.stamp
+            pose.pose.position.x = p[0]
+            pose.pose.position.y = p[1]
+            pose.pose.position.z = 0.0
+            # Orientation can be set if needed; here we leave it default
+            poses.append(pose)
+        path_msg.poses = poses
+        self.path_publisher.publish(path_msg)
+
 
 
 def main(args=None):
