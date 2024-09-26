@@ -345,7 +345,6 @@ class navigationControl(Node):
         self.kesif = True
         threading.Thread(target=self.exp).start() #Kesif fonksiyonunu thread olarak calistirir.
         self.path_publisher = self.create_publisher(Path, 'plan', 10)
-        self.goal_publisher = self.create_publisher(PoseStamped, 'goal_pose', 10)
         self.marker_publisher = self.create_publisher(Marker, 'marker', 10)        
         self.robot_path_publisher = self.create_publisher(Path, 'robot_path', 10)
         self.robot_path = []
@@ -371,7 +370,6 @@ class navigationControl(Node):
                     # Publish the goal
                     goal_x = self.path[-1][0]
                     goal_y = self.path[-1][1]
-                    self.publish_goal(goal_x, goal_y)    
                     self.publish_goal_marker(goal_x, goal_y)            
                 self.c = int((self.path[-1][0] - self.originX)/self.resolution) 
                 self.r = int((self.path[-1][1] - self.originY)/self.resolution) 
@@ -449,16 +447,6 @@ class navigationControl(Node):
             poses.append(pose)
         path_msg.poses = poses
         self.path_publisher.publish(path_msg)
-
-    def publish_goal(self, goal_x, goal_y):
-        goal_msg = PoseStamped()
-        goal_msg.header.frame_id = 'map' 
-        goal_msg.header.stamp = self.get_clock().now().to_msg()
-        goal_msg.pose.position.x = goal_x
-        goal_msg.pose.position.y = goal_y
-        goal_msg.pose.position.z = 0.0
-        goal_msg.pose.orientation.w = 1.0 
-        self.goal_publisher.publish(goal_msg)
 
     def publish_goal_marker(self, goal_x, goal_y):
         marker = Marker()
