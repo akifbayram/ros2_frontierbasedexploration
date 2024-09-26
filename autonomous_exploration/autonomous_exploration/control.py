@@ -10,6 +10,7 @@ import sys , threading , time
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
+from visualization_msgs.msg import Marker
 
 with open("autonomous_exploration/config/params.yaml", 'r') as file:
     params = yaml.load(file, Loader=yaml.FullLoader)
@@ -345,7 +346,8 @@ class navigationControl(Node):
         threading.Thread(target=self.exp).start() #Kesif fonksiyonunu thread olarak calistirir.
         self.path_publisher = self.create_publisher(Path, 'path', 10)
         self.goal_publisher = self.create_publisher(PoseStamped, 'goal_pose', 10)
-        
+        self.marker_publisher = self.create_publisher(Marker, 'marker', 10)
+
     def exp(self):
         twist = Twist()
         while True: #Sensor verileri gelene kadar bekle.
@@ -367,7 +369,8 @@ class navigationControl(Node):
                     # Publish the goal
                     goal_x = self.path[-1][0]
                     goal_y = self.path[-1][1]
-                    self.publish_goal(goal_x, goal_y)                
+                    self.publish_goal(goal_x, goal_y)    
+                    self.publish_goal_marker(goal_x, goal_y)            
                 self.c = int((self.path[-1][0] - self.originX)/self.resolution) 
                 self.r = int((self.path[-1][1] - self.originY)/self.resolution) 
                 self.kesif = False
@@ -450,7 +453,26 @@ class navigationControl(Node):
         goal_msg.pose.orientation.w = 1.0  # Represents no rotation
         self.goal_publisher.publish(goal_msg)
 
-
+    def publish_goal_marker(self, goal_x, goal_y):
+        marker = Marker()
+        marker.header.frame_id = 'map'
+        marker.header.stamp = self.get_clock().now().to_msg()
+        marker.ns = 'goal'
+        marker.id = 0
+        marker.type = Marker.SPHERE  # Choose the desired shape
+        marker.action = Marker.ADD
+        marker.pose.position.x = goal_x
+        marker.pose.position.y = goal_y
+        marker.pose.position.z = 0.0
+        marker.pose.orientation.w = 1.0
+        marker.scale.x = 0.2  # Adjust the size
+        marker.scale.y = 0.2
+        marker.scale.z = 0.2
+        marker.color.a = 1.0  # Don't forget to set the alpha!
+        marker.color.r = 1.0
+        marker.color.g = 0.0
+        marker.color.b = 0.0
+        self.marker_publisher.publish(marker)
 
 def main(args=None):
     rclpy.init(args=args)
