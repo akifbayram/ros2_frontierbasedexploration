@@ -10,7 +10,7 @@ import sys , threading , time
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 
 with open("autonomous_exploration/config/params.yaml", 'r') as file:
     params = yaml.load(file, Loader=yaml.FullLoader)
@@ -213,7 +213,7 @@ def calculate_centroid(x_coords, y_coords):
     centroid = (int(mean_x), int(mean_y))
     return centroid
 
-#Bu fonksiyon en buyuk 5 gruptan target_error*2 uzaklıktan daha uzak olan ve robota en yakın olanı seçer.
+# Bu fonksiyon en buyuk 5 gruptan target_error*2 uzaklıktan daha uzak olan ve robota en yakın olanı seçer.
 """
 def findClosestGroup(matrix,groups, current,resolution,originX,originY):
     targetP = None
@@ -265,7 +265,7 @@ def findClosestGroup(matrix,groups, current,resolution,originX,originY):
                 max_score = i
     if max_score != -1:
         targetP = paths[max_score]
-    else: #gruplar target_error*2 uzaklıktan daha yakınsa random bir noktayı hedef olarak seçer. Bu robotun bazı durumlardan kurtulmasını sağlar.
+    else: # gruplar target_error*2 uzaklıktan daha yakınsa random bir noktayı hedef olarak seçer. Bu robotun bazı durumlardan kurtulmasını sağlar.
         index = random.randint(0,len(groups)-1)
         target = groups[index][1]
         target = target[random.randint(0,len(target)-1)]
@@ -310,7 +310,7 @@ def exploration(data,width,height,resolution,column,row,originX,originY):
         else: # Grup varsa en yakın grubu bul
             data[data < 0] = 1 #-0.05 olanlar bilinmeyen yer. Gidilemez olarak isaretle. 0 = gidilebilir, 1 = gidilemez.
             path = findClosestGroup(data,groups,(row,column),resolution,originX,originY) #En yakın grubu bul
-            if path != None: #Yol varsa BSpline ile düzelt
+            if path != None: # Yol varsa BSpline ile düzelt
                 path = bspline_planning(path,len(path)*5)
             else:
                 path = -1
@@ -343,11 +343,14 @@ class navigationControl(Node):
         self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
         print("[INFO] EXPLORATION MODE ACTIVE")
         self.kesif = True
-        threading.Thread(target=self.exp).start() #Kesif fonksiyonunu thread olarak calistirir.
+        threading.Thread(target=self.exp).start() # Kesif fonksiyonunu thread olarak calistirir.
         self.path_publisher = self.create_publisher(Path, 'plan', 10)
         self.marker_publisher = self.create_publisher(Marker, 'marker', 10)        
         self.robot_path_publisher = self.create_publisher(Path, 'robot_path', 10)
         self.robot_path = []
+        self.goals_marker_publisher = self.create_publisher(MarkerArray, 'goals_markers', 10)
+        self.goal_markers = []
+
 
     def exp(self):
         twist = Twist()
@@ -367,9 +370,13 @@ class navigationControl(Node):
                     print("[INFO] EXPLORATION COMPLETED")
                     sys.exit()
                 else:
-                    # Publish the goal
                     goal_x = self.path[-1][0]
                     goal_y = self.path[-1][1]
+                    self.publish_goal_marker(goal_x, goal_y)
+
+                    self.create_goal_marker(goal_x, goal_y)
+                    self.publish_goal_markers()
+
                     self.publish_goal_marker(goal_x, goal_y)            
                 self.c = int((self.path[-1][0] - self.originX)/self.resolution) 
                 self.r = int((self.path[-1][1] - self.originY)/self.resolution) 
@@ -485,6 +492,32 @@ class navigationControl(Node):
             poses.append(pose)
         path_msg.poses = poses
         self.robot_path_publisher.publish(path_msg)
+
+    def create_goal_marker(self, goal_x, goal_y):
+        marker = Marker()
+        marker.header.frame_id = 'map'
+        marker.header.stamp = self.get_clock().now().to_msg()
+        marker.ns = 'goals_history'
+        marker.id = len(self.goal_markers) 
+        marker.type = Marker.SPHERE
+        marker.action = Marker.ADD
+        marker.pose.position.x = goal_x
+        marker.pose.position.y = goal_y
+        marker.pose.position.z = 0.0
+        marker.pose.orientation.w = 1.0
+        marker.scale.x = 0.2
+        marker.scale.y = 0.2
+        marker.scale.z = 0.2
+        marker.color.a = 1.0
+        marker.color.r = 0.0
+        marker.color.g = 1.0
+        marker.color.b = 0.0
+        self.goal_markers.append(marker)
+
+    def publish_goal_markers(self):
+        marker_array = MarkerArray()
+        marker_array.markers = self.goal_markers
+        self.goals_marker_publisher.publish(marker_array)
 
 def main(args=None):
     rclpy.init(args=args)
