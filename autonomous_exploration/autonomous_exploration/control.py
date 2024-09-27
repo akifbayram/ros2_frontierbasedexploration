@@ -342,7 +342,12 @@ class navigationControl(Node):
         self.subscription = self.create_subscription(LaserScan,'scan',self.scan_callback,best_effort_qos) 
         self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
         print("[INFO] EXPLORATION MODE ACTIVE")
+        
         self.kesif = True
+        self.start_time = None
+        self.end_time = None  
+        self.total_exploration_time = None
+
         threading.Thread(target=self.exp).start() # Kesif fonksiyonunu thread olarak calistirir.
         self.path_publisher = self.create_publisher(Path, 'plan', 10)
         self.marker_publisher = self.create_publisher(Marker, 'marker', 10)        
@@ -359,6 +364,10 @@ class navigationControl(Node):
                 time.sleep(0.1)
                 continue
             if self.kesif == True:
+                if self.start_time is None:
+                    self.start_time = time.perf_counter()
+                    print("[INFO] Exploration started.")
+
                 if isinstance(pathGlobal, int) and pathGlobal == 0:
                     column = int((self.x - self.originX)/self.resolution)
                     row = int((self.y- self.originY)/self.resolution)
@@ -368,6 +377,9 @@ class navigationControl(Node):
                     self.path = pathGlobal
                 if isinstance(self.path, int) and self.path == -1:
                     print("[INFO] EXPLORATION COMPLETED")
+                    self.end_time = time.perf_counter()
+                    self.total_exploration_time = self.end_time - self.start_time
+                    print(f"[INFO] Total Exploration Time: {self.total_exploration_time:.2f} seconds")
                     sys.exit()
                 else:
                     goal_x = self.path[-1][0]
@@ -387,6 +399,7 @@ class navigationControl(Node):
 
                 self.i = 0
                 print("[INFO] NEW TARGET ASSIGNED")
+                
                 t = pathLength(self.path)/speed
                 t = t - 0.2 #x = v * t formülüne göre hesaplanan sureden 0.2 saniye cikarilir. t sure sonra kesif fonksiyonu calistirilir.
                 self.t = threading.Timer(t,self.target_callback) #Hedefe az bir sure kala kesif fonksiyonunu calistirir.
