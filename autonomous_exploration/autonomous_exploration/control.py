@@ -2,7 +2,8 @@ import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import OccupancyGrid , Odometry
 from geometry_msgs.msg import Twist
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import LaserScan, PointCloud2, PointField
+import sensor_msgs_py.point_cloud2 as pcl2
 import numpy as np
 import heapq , math , random , yaml
 import scipy.interpolate as si
@@ -11,6 +12,7 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from visualization_msgs.msg import Marker, MarkerArray
+from std_msgs.msg import Header
 
 with open("autonomous_exploration/config/params.yaml", 'r') as file:
     params = yaml.load(file, Loader=yaml.FullLoader)
@@ -26,6 +28,7 @@ best_effort_qos = QoSProfile(
     depth=10  
 )
 pathGlobal = 0
+frontierPointsGlobal = None
 
 def euler_from_quaternion(x,y,z,w):
     t0 = +2.0 * (w * x + y * z)
@@ -298,11 +301,22 @@ def costmap(data,width,height,resolution):
     return data
 
 def exploration(data,width,height,resolution,column,row,originX,originY):
-        global pathGlobal # Global degisken
+        global pathGlobal, frontierPointsGlobal # Global degisken
         data = costmap(data,width,height,resolution) #Engelleri genislet
         data[row][column] = 0 # Robot Anlık Konum
         data[data > 5] = 1 # 0 olanlar gidilebilir yer, 100 olanlar kesin engel
         data = frontierB(data) # Sınır noktaları bul
+
+        frontier_points = np.argwhere(data == 2)
+        frontier_points_coords = []
+        for point in frontier_points:
+            r, c = point
+            x = c * resolution + originX
+            y = r * resolution + originY
+            frontier_points_coords.append((x, y))
+        frontierPointsGlobal = frontier_points_coords 
+
+
         data,groups = assign_groups(data) #Sınır noktaları gruplandır
         groups = fGroups(groups) # Grupları küçükten büyüğe sırala. En buyuk 5 grubu al
         if len(groups) == 0: # Grup yoksa kesif tamamlandı
@@ -355,7 +369,7 @@ class navigationControl(Node):
         self.robot_path = []
         self.goals_marker_publisher = self.create_publisher(MarkerArray, 'goals_markers', 10)
         self.goal_markers = []
-
+        self.frontier_cloud_publisher = self.create_publisher(PointCloud2, 'frontier_points', 10)
 
     def exp(self):
         twist = Twist()
@@ -420,6 +434,9 @@ class navigationControl(Node):
                 twist.angular.z = w
                 self.publisher.publish(twist)
                 time.sleep(0.1)
+            self.publish_frontier_pointcloud()
+            time.sleep(0.1)
+
             # Rota Takip Blok Bitis
 
     def target_callback(self):
@@ -531,6 +548,16 @@ class navigationControl(Node):
         marker_array = MarkerArray()
         marker_array.markers = self.goal_markers
         self.goals_marker_publisher.publish(marker_array)
+
+    def publish_frontier_pointcloud(self):
+        if frontierPointsGlobal is None:
+            return
+        header = Header()
+        header.stamp = self.get_clock().now().to_msg()
+        header.frame_id = 'map'
+        points = [(x, y, 0.0) for x, y in frontierPointsGlobal]
+        cloud = pcl2.create_cloud_xyz32(header, points)
+        self.frontier_cloud_publisher.publish(cloud)
 
 def main(args=None):
     rclpy.init(args=args)
