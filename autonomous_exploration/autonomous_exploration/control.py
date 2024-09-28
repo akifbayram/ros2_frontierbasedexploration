@@ -176,11 +176,16 @@ def frontierB(matrix):
 def assign_groups(matrix):
     group = 1
     groups = {}
+    centroids = []
     for i in range(len(matrix)):
         for j in range(len(matrix[0])):
             if matrix[i][j] == 2:
                 group = dfs(matrix, i, j, group, groups)
-    return matrix, groups
+    for group_id, points in groups.items():
+        if len(points) > 0:
+            centroid = calculate_centroid([p[0] for p in points], [p[1] for p in points])
+            centroids.append(centroid)
+    return matrix, groups, centroids
 
 def dfs(matrix, i, j, group, groups):
     if i < 0 or i >= len(matrix) or j < 0 or j >= len(matrix[0]):
@@ -261,7 +266,7 @@ def findClosestGroup(matrix,groups, current,resolution,originX,originY):
         if distances[i] == 0:
             score.append(0)
         else:
-            score.append(len(groups[i][1])/distances[i])
+            score.append(len(groups[i][1]) / math.exp(distances[i]))  # Strongly penalizes larger distances
     for i in range(len(distances)):
         if distances[i] > target_error*3:
             if max_score == -1 or score[i] > score[max_score]:
@@ -317,7 +322,7 @@ def exploration(data,width,height,resolution,column,row,originX,originY):
         frontierPointsGlobal = frontier_points_coords 
 
 
-        data,groups = assign_groups(data) #Sınır noktaları gruplandır
+        data,groups,centroids = assign_groups(data) #Sınır noktaları gruplandır
         groups = fGroups(groups) # Grupları küçükten büyüğe sırala. En buyuk 5 grubu al
         if len(groups) == 0: # Grup yoksa kesif tamamlandı
             path = -1
@@ -329,7 +334,7 @@ def exploration(data,width,height,resolution,column,row,originX,originY):
             else:
                 path = -1
         pathGlobal = path
-        return
+        return centroids
 
 def localControl(scan):
     v = None
@@ -359,6 +364,7 @@ class navigationControl(Node):
 
         self.timer_frontier = self.create_timer(0.1, self.publish_frontier_pointcloud)
         self.timer_exploration = self.create_timer(0.1, self.exploration_loop)
+        self.timer_centroid_markers = self.create_timer(0.1, self.publish_centroid_markers)
 
         self.kesif = True
         self.path = None
@@ -374,6 +380,8 @@ class navigationControl(Node):
         self.goals_marker_publisher = self.create_publisher(MarkerArray, 'goals_markers', 10)
         self.goal_markers = []
         self.frontier_cloud_publisher = self.create_publisher(PointCloud2, 'frontier_points', 10)
+        self.centroid_marker_publisher = self.create_publisher(MarkerArray, 'centroid_markers', 10)
+
 
     def exploration_loop(self):
         twist = Twist()
@@ -385,10 +393,11 @@ class navigationControl(Node):
             if self.start_time is None:
                 self.start_time = time.perf_counter()
                 print("[INFO] Exploration started.")
-
+                
             column = int((self.x - self.originX) / self.resolution)
             row = int((self.y - self.originY) / self.resolution)
-            exploration(self.data, self.width, self.height, self.resolution, column, row, self.originX, self.originY)
+            centroids = exploration(self.data, self.width, self.height, self.resolution, column, row, self.originX, self.originY)
+            self.centroids = centroids  # Store centroids in the navigationControl class
             self.path = pathGlobal
 
             if isinstance(self.path, int) and self.path == -1:
@@ -528,14 +537,46 @@ class navigationControl(Node):
         self.goals_marker_publisher.publish(marker_array)
 
     def publish_frontier_pointcloud(self):
+        global frontierPointsGlobal
+
         if frontierPointsGlobal is None:
             return
+
         header = Header()
         header.stamp = self.get_clock().now().to_msg()
         header.frame_id = 'map'
         points = [(x, y, 0.0) for x, y in frontierPointsGlobal]
         cloud = pcl2.create_cloud_xyz32(header, points)
         self.frontier_cloud_publisher.publish(cloud)
+
+    def publish_centroid_markers(self):
+        if hasattr(self, 'centroids') and self.centroids:
+            centroid_marker_array = MarkerArray()
+            for idx, centroid in enumerate(self.centroids):
+                marker = Marker()
+                marker.header.frame_id = 'map'
+                marker.header.stamp = self.get_clock().now().to_msg()
+                marker.ns = 'frontier_centroids'
+                marker.id = idx
+                marker.type = Marker.SPHERE
+                marker.action = Marker.ADD
+
+                # Transform centroid from grid coordinates to map coordinates
+                marker.pose.position.x = centroid[1] * self.resolution + self.originX  
+                marker.pose.position.y = centroid[0] * self.resolution + self.originY  
+                marker.pose.position.z = 0.0
+                marker.pose.orientation.w = 1.0
+                marker.scale.x = 0.1
+                marker.scale.y = 0.1
+                marker.scale.z = 0.1
+                marker.color.a = 1.0
+                marker.color.r = 0.0 
+                marker.color.g = 0.0  
+                marker.color.b = 1.0  
+                centroid_marker_array.markers.append(marker)
+
+            self.centroid_marker_publisher.publish(centroid_marker_array)
+
 
 def main(args=None):
     rclpy.init(args=args)
