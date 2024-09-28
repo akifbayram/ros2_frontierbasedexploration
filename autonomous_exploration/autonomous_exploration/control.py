@@ -351,97 +351,75 @@ def localControl(scan):
 class navigationControl(Node):
     def __init__(self):
         super().__init__('Exploration')
-        self.subscription = self.create_subscription(OccupancyGrid,'map',self.map_callback,10)
-        self.subscription = self.create_subscription(Odometry,'odom',self.odom_callback,10)
-        self.subscription = self.create_subscription(LaserScan,'scan',self.scan_callback,best_effort_qos) 
+        self.subscription_map = self.create_subscription(OccupancyGrid, 'map', self.map_callback, 10)
+        self.subscription_odom = self.create_subscription(Odometry, 'odom', self.odom_callback, 10)
+        self.subscription_scan = self.create_subscription(LaserScan, 'scan', self.scan_callback, best_effort_qos)
         self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
         print("[INFO] EXPLORATION MODE ACTIVE")
-        
+
+        self.timer_frontier = self.create_timer(0.1, self.publish_frontier_pointcloud)
+        self.timer_exploration = self.create_timer(0.1, self.exploration_loop)
+
         self.kesif = True
+        self.path = None
+        self.i = 0
         self.start_time = None
         self.end_time = None  
         self.total_exploration_time = None
 
-        threading.Thread(target=self.exp).start() # Kesif fonksiyonunu thread olarak calistirir.
         self.path_publisher = self.create_publisher(Path, 'plan', 10)
-        self.marker_publisher = self.create_publisher(Marker, 'marker', 10)        
+        self.marker_publisher = self.create_publisher(Marker, 'marker', 10)
         self.robot_path_publisher = self.create_publisher(Path, 'robot_path', 10)
         self.robot_path = []
         self.goals_marker_publisher = self.create_publisher(MarkerArray, 'goals_markers', 10)
         self.goal_markers = []
         self.frontier_cloud_publisher = self.create_publisher(PointCloud2, 'frontier_points', 10)
 
-    def exp(self):
+    def exploration_loop(self):
         twist = Twist()
-        while True: # Sensor verileri gelene kadar bekle.
-            if not hasattr(self,'map_data') or not hasattr(self,'odom_data') or not hasattr(self,'scan_data'):
-                time.sleep(0.1)
-                continue
-            if self.kesif == True:
-                if self.start_time is None:
-                    self.start_time = time.perf_counter()
-                    print("[INFO] Exploration started.")
 
-                if isinstance(pathGlobal, int) and pathGlobal == 0:
-                    column = int((self.x - self.originX)/self.resolution)
-                    row = int((self.y- self.originY)/self.resolution)
-                    exploration(self.data,self.width,self.height,self.resolution,column,row,self.originX,self.originY)
-                    self.path = pathGlobal
-                else:
-                    self.path = pathGlobal
-                if isinstance(self.path, int) and self.path == -1:
-                    print("[INFO] EXPLORATION COMPLETED")
-                    self.end_time = time.perf_counter()
-                    self.total_exploration_time = self.end_time - self.start_time
-                    print(f"[INFO] Total Exploration Time: {self.total_exploration_time:.2f} seconds")
-                    sys.exit()
-                else:
-                    goal_x = self.path[-1][0]
-                    goal_y = self.path[-1][1]
-                    self.publish_goal_marker(goal_x, goal_y)
+        if not hasattr(self, 'map_data') or not hasattr(self, 'odom_data') or not hasattr(self, 'scan_data'):
+            return
 
-                    self.create_goal_marker(goal_x, goal_y)
-                    self.publish_goal_markers()
+        if self.kesif:
+            if self.start_time is None:
+                self.start_time = time.perf_counter()
+                print("[INFO] Exploration started.")
 
-                    self.publish_goal_marker(goal_x, goal_y)            
-                self.c = int((self.path[-1][0] - self.originX)/self.resolution) 
-                self.r = int((self.path[-1][1] - self.originY)/self.resolution) 
-                self.kesif = False
+            column = int((self.x - self.originX) / self.resolution)
+            row = int((self.y - self.originY) / self.resolution)
+            exploration(self.data, self.width, self.height, self.resolution, column, row, self.originX, self.originY)
+            self.path = pathGlobal
 
-                self.path = pathGlobal
+            if isinstance(self.path, int) and self.path == -1:
+                print("[INFO] EXPLORATION COMPLETED")
+                self.end_time = time.perf_counter()
+                self.total_exploration_time = self.end_time - self.start_time
+                print(f"[INFO] Total Exploration Time: {self.total_exploration_time:.2f} seconds")
+                rclpy.shutdown()
+            else:
+                goal_x = self.path[-1][0]
+                goal_y = self.path[-1][1]
+                self.publish_goal_marker(goal_x, goal_y)
+                self.create_goal_marker(goal_x, goal_y)
+                self.publish_goal_markers()
                 self.publish_path(self.path)
-
                 self.i = 0
                 print("[INFO] NEW TARGET ASSIGNED")
-                
-                t = pathLength(self.path)/speed
-                t = t - 0.2 #x = v * t formülüne göre hesaplanan sureden 0.2 saniye cikarilir. t sure sonra kesif fonksiyonu calistirilir.
-                self.t = threading.Timer(t,self.target_callback) #Hedefe az bir sure kala kesif fonksiyonunu calistirir.
-                self.t.start()
+            self.kesif = False
+        else:
+            v, w = localControl(self.scan)
+            if v is None:
+                v, w, self.i = pure_pursuit(self.x, self.y, self.yaw, self.path, self.i)
+            if abs(self.x - self.path[-1][0]) < target_error and abs(self.y - self.path[-1][1]) < target_error:
+                v = 0.0
+                w = 0.0
+                self.kesif = True
+                print("[INFO] TARGET REACHED")
+            twist.linear.x = v
+            twist.angular.z = w
+            self.publisher.publish(twist)
             
-            # Rota Takip Blok Baslangic
-            else:
-                v , w = localControl(self.scan)
-                if v == None:
-                    v, w,self.i = pure_pursuit(self.x,self.y,self.yaw,self.path,self.i)
-                if(abs(self.x - self.path[-1][0]) < target_error and abs(self.y - self.path[-1][1]) < target_error):
-                    v = 0.0
-                    w = 0.0
-                    self.kesif = True
-                    print("[INFO] TARGET REACHED")
-                    self.t.join() # Thread bitene kadar bekle.
-                twist.linear.x = v
-                twist.angular.z = w
-                self.publisher.publish(twist)
-                time.sleep(0.1)
-            self.publish_frontier_pointcloud()
-            time.sleep(0.1)
-
-            # Rota Takip Blok Bitis
-
-    def target_callback(self):
-        exploration(self.data,self.width,self.height,self.resolution,self.c,self.r,self.originX,self.originY)
-        
     def scan_callback(self,msg):
         self.scan_data = msg
         self.scan = msg.ranges
