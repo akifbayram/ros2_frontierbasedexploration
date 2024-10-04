@@ -171,7 +171,16 @@ def frontierB(matrix):
                     matrix[i][j] = 2
                 elif j < len(matrix[i])-1 and matrix[i][j+1] < 0:
                     matrix[i][j] = 2
+                elif i > 1 and matrix[i-2][j] < 0: 
+                    matrix[i][j] = 2
+                elif i < len(matrix)-2 and matrix[i+2][j] < 0:
+                    matrix[i][j] = 2
+                elif j > 1 and matrix[i][j-2] < 0:
+                    matrix[i][j] = 2
+                elif j < len(matrix[i])-2 and matrix[i][j+2] < 0:
+                    matrix[i][j] = 2
     return matrix
+
 
 def assign_groups(matrix):
     group = 1
@@ -196,15 +205,17 @@ def dfs(matrix, i, j, group, groups):
         groups[group].append((i, j))
     else:
         groups[group] = [(i, j)]
-    matrix[i][j] = 0
+    matrix[i][j] = 0 
+    
     dfs(matrix, i + 1, j, group, groups)
     dfs(matrix, i - 1, j, group, groups)
     dfs(matrix, i, j + 1, group, groups)
     dfs(matrix, i, j - 1, group, groups)
-    dfs(matrix, i + 1, j + 1, group, groups) # sağ alt çapraz
-    dfs(matrix, i - 1, j - 1, group, groups) # sol üst çapraz
-    dfs(matrix, i - 1, j + 1, group, groups) # sağ üst çapraz
-    dfs(matrix, i + 1, j - 1, group, groups) # sol alt çapraz
+    dfs(matrix, i + 2, j, group, groups) 
+    dfs(matrix, i - 2, j, group, groups)
+    dfs(matrix, i, j + 2, group, groups)
+    dfs(matrix, i, j - 2, group, groups)
+
     return group + 1
 
 def fGroups(groups):
