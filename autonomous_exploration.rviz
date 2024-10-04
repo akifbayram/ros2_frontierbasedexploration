@@ -8,6 +8,8 @@ Panels:
         - /TF1/Frames1
         - /TF1/Tree1
         - /LaserScan1
+        - /Plan1
+        - /RobotPath1
         - /MarkerArray1
       Splitter Ratio: 0.5833333134651184
     Tree Height: 276
@@ -182,7 +184,7 @@ Visualization Manager:
       Head Diameter: 0.019999999552965164
       Head Length: 0.019999999552965164
       Length: 0.30000001192092896
-      Line Style: Lines
+      Line Style: Billboards
       Line Width: 0.05000000074505806
       Name: Plan
       Offset:
@@ -439,7 +441,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 122.72589111328125
+      Scale: 339.43951416015625
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz_default_plugins)
       X: 0
@@ -462,4 +464,4 @@ Window Geometry:
     collapsed: false
   Width: 2694
   X: 267
-  Y: 54
+  Y: 208
