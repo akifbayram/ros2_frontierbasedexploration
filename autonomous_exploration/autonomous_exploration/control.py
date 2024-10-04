@@ -550,7 +550,9 @@ class navigationControl(Node):
     def publish_frontier_pointcloud(self):
         global frontierPointsGlobal
 
-        if frontierPointsGlobal is None:
+        if frontierPointsGlobal is None or len(frontierPointsGlobal) == 0:
+            empty_cloud = pcl2.create_cloud_xyz32(Header(frame_id='map', stamp=self.get_clock().now().to_msg()), [])
+            self.frontier_cloud_publisher.publish(empty_cloud)
             return
 
         header = Header()
@@ -563,6 +565,14 @@ class navigationControl(Node):
     def publish_centroid_markers(self):
         if hasattr(self, 'centroids') and self.centroids:
             centroid_marker_array = MarkerArray()
+
+            delete_marker = Marker()
+            delete_marker.header.frame_id = 'map'
+            delete_marker.header.stamp = self.get_clock().now().to_msg()
+            delete_marker.ns = 'frontier_centroids'
+            delete_marker.action = Marker.DELETEALL 
+            centroid_marker_array.markers.append(delete_marker)
+
             for idx, centroid in enumerate(self.centroids):
                 marker = Marker()
                 marker.header.frame_id = 'map'
@@ -573,17 +583,17 @@ class navigationControl(Node):
                 marker.action = Marker.ADD
 
                 # Transform centroid from grid coordinates to map coordinates
-                marker.pose.position.x = centroid[1] * self.resolution + self.originX  
-                marker.pose.position.y = centroid[0] * self.resolution + self.originY  
+                marker.pose.position.x = centroid[1] * self.resolution + self.originX
+                marker.pose.position.y = centroid[0] * self.resolution + self.originY
                 marker.pose.position.z = 0.0
                 marker.pose.orientation.w = 1.0
                 marker.scale.x = 0.1
                 marker.scale.y = 0.1
                 marker.scale.z = 0.1
                 marker.color.a = 1.0
-                marker.color.r = 0.0 
-                marker.color.g = 0.0  
-                marker.color.b = 1.0  
+                marker.color.r = 0.0
+                marker.color.g = 0.0
+                marker.color.b = 1.0
                 centroid_marker_array.markers.append(marker)
 
             self.centroid_marker_publisher.publish(centroid_marker_array)

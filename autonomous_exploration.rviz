@@ -3,14 +3,6 @@ Panels:
     Help Height: 0
     Name: Displays
     Property Tree Widget:
-      Expanded:
-        - /Global Options1
-        - /TF1/Frames1
-        - /TF1/Tree1
-        - /LaserScan1
-        - /Plan1
-        - /RobotPath1
-        - /MarkerArray1
       Splitter Ratio: 0.5833333134651184
     Tree Height: 276
   - Class: rviz_common/Selection
@@ -350,7 +342,7 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: MarkerArray
+      Name: Centroids
       Namespaces:
         frontier_centroids: true
       Topic:
@@ -371,7 +363,7 @@ Visualization Manager:
       Class: rviz_default_plugins/PointCloud2
       Color: 0; 95; 255
       Color Transformer: FlatColor
-      Decay Time: 0
+      Decay Time: 1
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
