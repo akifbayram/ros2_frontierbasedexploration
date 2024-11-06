@@ -2,7 +2,7 @@
 
 This project implements an autonomous, frontier-based exploration algorithm using ROS2, enabling TurtleBot robots to autonomously map unknown environments.
 
-Based on the [work](https://github.com/abdulkadrtr/ROS2-FrontierBaseExplorationForAutonomousRobot) by [Abdulkadir TÜRKMEN](https://github.com/abdulkadrtr).
+Based on the [work](https://github.com/abdulkadrtr/ROS2-FrontierBaseExplorationForAutonomousRobot) by [abdulkadrtr](https://github.com/abdulkadrtr).
 
 ---
 
@@ -153,4 +153,4 @@ planner_server:
 
 ## Acknowledgments
 
-Based on work by [Abdulkadir TÜRKMEN](https://github.com/abdulkadrtr).
+Based on work by [abdulkadrtr](https://github.com/abdulkadrtr).
