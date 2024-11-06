@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'control = autonomous_exploration.control:main'
+            'control_go2 = autonomous_exploration.control_go2:main',
+            'control_tb4 = autonomous_exploration.control_tb4:main'
         ],
     },
 )

@@ -1,54 +1,156 @@
-# ROS2-FrontierBaseExplorationForAutonomousRobot
-Our autonomous ground vehicle uses Frontier Based exploration to navigate and map unknown environments. Equipped with sensors, it can avoid obstacles and make real-time decisions. It has potential applications in search and rescue, agriculture, and logistics, and represents an important step forward in autonomous ground vehicle development.
+# Frontier Based Autonomous Exploration with ROS2 and TurtleBot Simulations
 
-This project utilizes the **Frontier-Based Exploration** algorithm for autonomous exploration. The project employs **DFS** for grouping boundary points, **A*** for finding the shortest path, **B-Spline** for smoothing path curvature, and **Pure Pursuit** for path following, along with other obstacle avoidance techniques. The combination of these techniques aims to provide a sophisticated, efficient, and reliable solution for autonomous ground vehicle exploration in a wide range of applications.
+This project implements an autonomous, frontier-based exploration algorithm using ROS2, enabling TurtleBot robots to autonomously map unknown environments.
 
+Based on the [work](https://github.com/abdulkadrtr/ROS2-FrontierBaseExplorationForAutonomousRobot) by [Abdulkadir TÜRKMEN](https://github.com/abdulkadrtr).
 
-![Screenshot_1](https://user-images.githubusercontent.com/87595266/218670694-e53bb1c4-fff2-42e9-9b9e-62b298da7fff.png)
+---
 
+## Overview
 
-# Youtube Project Presentation Video & Demo
+The algorithm uses ROS2 Navigation Stack (Nav2) and SLAM to allow the robot to explore by navigating to frontiers—the boundaries between explored and unexplored areas—thus building a map of the environment.
 
-https://youtu.be/UxCZAU9ZZoc
-
-# Update Version V1.1 - 26.02.2023
-
-https://youtu.be/_1vtmFuhl9Y
-
-- The exploration algorithm has been optimized.
-
-- Robot decision algorithm has been changed. Watch the video for detailed information.
-
-- Thread structure has been added to the exploration algorithm. 
-
-
-# How does it work?
-
-1 - To get started with autonomous exploration, first launch the Map Node 
-
-by running the following command:
-
-`ros2 launch slam_toolbox online_async_launch.py`
-
-2 - Then, launch the Gazebo simulation environment by setting the TurtleBot3 
-
-model, for example, using the following command:
-
-`export TURTLEBOT3_MODEL=burger`
-
-
-`ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py`
-
-3 - Once the simulation environment is running, run the autonomous_exploration 
-
-package using the following command:
-
-`ros2 run autonomous_exploration control`
-
-This will start the robot's autonomous exploration.
+---
 
 ## Requirements
 
-- ROS2 - Humble
-- Slam Toolbox
-- Turtlebot3 Package
+- **ROS2 Humble**
+- **Nav2 Navigation Stack**
+- **SLAM Toolbox** (for TurtleBot 3)
+- **TurtleBot Packages**
+  - `turtlebot4` (for TurtleBot 4)
+  - `turtlebot3` (for TurtleBot 3)
+
+---
+
+## Installation
+
+1. **Install ROS2 Humble**: Follow the [official guide](https://docs.ros.org/en/humble/Installation.html).
+
+2. **Install TurtleBot Packages**:
+
+   - For TurtleBot 4:
+     ```bash
+     sudo apt install ros-humble-turtlebot4*
+     ```
+   - For TurtleBot 3:
+     ```bash
+     sudo apt install ros-humble-turtlebot3*
+     ```
+
+3. **Install SLAM Toolbox** (for TurtleBot 3):
+   ```bash
+   sudo apt install ros-humble-slam-toolbox
+   ```
+
+4. **Clone the Repository**:
+   ```bash
+   mkdir -p ~/ros2_ws/src
+   cd ~/ros2_ws/src
+   git clone https://github.com/yourusername/autonomous_exploration.git
+   ```
+   *Replace `yourusername` with your GitHub username or the correct repository URL.*
+
+5. **Build the Workspace**:
+   ```bash
+   cd ~/ros2_ws
+   colcon build
+   ```
+
+6. **Source the Workspace**:
+   ```bash
+   source ~/ros2_ws/install/setup.bash
+   ```
+
+---
+
+## TurtleBot 4 Simulation
+
+### Setup Steps
+
+1. **Launch the Simulation**:
+   ```bash
+   ros2 launch turtlebot4_ignition_bringup turtlebot4_ignition.launch.py slam:=true nav2:=true rviz:=false world:=depot
+   ```
+   Parameters:
+   - `slam:=true`: Enables SLAM.
+   - `nav2:=true`: Starts Nav2.
+   - `world:=depot`: Specifies the simulation world.
+
+2. **Launch RViz2**:
+   ```bash
+   source ~/ros2_ws/install/setup.bash
+   ros2 run rviz2 rviz2 -d ~/ros2_ws/src/autonomous_exploration/config/autonomous_exploration_tb4.rviz
+   ```
+
+3. **Run the Exploration Algorithm**:
+   ```bash
+   source ~/ros2_ws/install/setup.bash
+   ros2 run autonomous_exploration control_tb4
+   ```
+
+### Nav2 Configuration
+
+Modify Nav2 parameters to prevent path planning through unknown areas:
+
+**File**: `/opt/ros/humble/share/turtlebot4_navigation/config/nav2.yaml`
+
+**Change**:
+```yaml
+planner_server:
+  ros__parameters:
+    GridBased:
+      allow_unknown: false  # Set from true to false
+```
+
+---
+
+## TurtleBot 3 Simulation
+
+### Setup Steps
+
+1. **Launch SLAM Toolbox**:
+   ```bash
+   source ~/ros2_ws/install/setup.bash
+   ros2 launch slam_toolbox online_async_launch.py
+   ```
+
+2. **Launch the Simulation**:
+   ```bash
+   export TURTLEBOT3_MODEL=burger
+   source ~/ros2_ws/install/setup.bash
+   ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
+   ```
+   *You can set `TURTLEBOT3_MODEL` to `burger`, `waffle`, or `waffle_pi`.*
+
+3. **Run the Exploration Algorithm**:
+   ```bash
+   source ~/ros2_ws/install/setup.bash
+   ros2 run autonomous_exploration control_tb3
+   ```
+
+4. **Launch RViz2** (optional):
+   ```bash
+   source ~/ros2_ws/install/setup.bash
+   ros2 run rviz2 rviz2 -d ~/ros2_ws/src/autonomous_exploration/config/autonomous_exploration_tb3.rviz
+   ```
+
+### Nav2 Configuration
+
+Modify Nav2 parameters:
+
+**File**: `/opt/ros/humble/share/turtlebot3_navigation2/param/nav2_params.yaml`
+
+**Change**:
+```yaml
+planner_server:
+  ros__parameters:
+    GridBased:
+      allow_unknown: false  # Set from true to false
+```
+
+---
+
+## Acknowledgments
+
+Based on work by [Abdulkadir TÜRKMEN](https://github.com/abdulkadrtr).
