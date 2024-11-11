@@ -170,11 +170,11 @@ class navigationControl(Node):
         self.end_time = None
         self.total_exploration_time = None
 
-        self.marker_publisher = self.create_publisher(Marker, 'marker', 10)
-        self.goals_marker_publisher = self.create_publisher(MarkerArray, 'goals_markers', 10)
+        self.marker_publisher = self.create_publisher(Marker, 'frontier/marker', 10)
+        self.goals_marker_publisher = self.create_publisher(MarkerArray, 'frontier/goals_markers', 10)
         self.goal_markers = []
-        self.frontier_cloud_publisher = self.create_publisher(PointCloud2, 'frontier_points', 10)
-        self.centroid_marker_publisher = self.create_publisher(MarkerArray, 'centroid_markers', 10)
+        self.frontier_cloud_publisher = self.create_publisher(PointCloud2, 'frontier/frontier_points', 10)
+        self.centroid_marker_publisher = self.create_publisher(MarkerArray, 'frontier/centroid_markers', 10)
 
         # Create an action client for Nav2
         self.nav_to_pose_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')

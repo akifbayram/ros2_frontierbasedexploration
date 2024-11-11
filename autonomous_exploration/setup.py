@@ -21,7 +21,9 @@ setup(
     entry_points={
         'console_scripts': [
             'control_go2 = autonomous_exploration.control_go2:main',
-            'control_tb4 = autonomous_exploration.control_tb4:main'
+            'control_tb3 = autonomous_exploration.control_tb3:main',
+            'control_tb4 = autonomous_exploration.control_tb4:main',
+            'voronoi_tb4 = autonomous_exploration.voronoi_tb4:main',
         ],
     },
 )
