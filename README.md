@@ -35,30 +35,31 @@ The algorithm uses ROS2 Navigation Stack (Nav2) and SLAM to allow the robot to e
    git clone https://github.com/akifbayram/ros2_frontierbasedexploration.git
    ```
 
-2. **Build the Workspace**:
+2. **Build and source the Workspace**:
    ```bash
    cd ~/ros2_ws
    colcon build
-   ```
 
-3. **Source the Workspace**:
-   ```bash
    source ~/ros2_ws/install/setup.bash
    ```
 
 ## Unitree Go2
 
 1. **Launch go2_ros2_sdk**:
+
+   Update the go2_ros2_sdk source directory.
+
    ```bash
-   source ~/ros2_ws/install/setup.bash &&
+   source ~/ros2_ws/install/setup.bash &&  
    export ROBOT_IP="x.x.x.x" &&
-   export CONN_TYPE="webrtc" &&
+   export CONN_TYPE="webrtc" && 
    ros2 launch go2_robot_sdk robot.launch.py
    ```
 
 2. **Run the Exploration Algorithm**:
+
    ```bash
-   source ~/ros2_ws/install/setup.bash &&
+   source ~/ros2_ws/install/setup.bash && 
    ros2 run autonomous_exploration control_go2
    ```
 ---
@@ -66,7 +67,10 @@ The algorithm uses ROS2 Navigation Stack (Nav2) and SLAM to allow the robot to e
 ## TurtleBot 4 Simulation
 
 1. **Launch the Simulation**:
+
+
    ```bash
+   source /etc/turtlebot4/setup.bash && 
    ros2 launch turtlebot4_ignition_bringup turtlebot4_ignition.launch.py slam:=true nav2:=true rviz:=false world:=maze
    ```
    Parameters:
@@ -76,14 +80,14 @@ The algorithm uses ROS2 Navigation Stack (Nav2) and SLAM to allow the robot to e
 
 2. **Launch RViz2**:
    ```bash
-   source ~/ros2_ws/install/setup.bash &&
+   source ~/ros2_ws/install/setup.bash && 
    source /etc/turtlebot4/setup.bash &&
    ros2 run rviz2 rviz2 -d ~/ros2_ws/src/autonomous_exploration/rviz/tb4.rviz
    ```
 
 3. **Run the Exploration Algorithm**:
    ```bash
-   source ~/ros2_ws/install/setup.bash &&
+   source ~/ros2_ws/install/setup.bash && 
    ros2 run autonomous_exploration control_tb4
    ```
 
@@ -133,4 +137,4 @@ planner_server:
 
 ## Acknowledgments
 
-Based on work by [abdulkadrtr](https://github.com/abdulkadrtr).
+Based heavily on work by [abdulkadrtr](https://github.com/abdulkadrtr).
