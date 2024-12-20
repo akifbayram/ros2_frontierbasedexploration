@@ -88,6 +88,7 @@ The algorithm uses ROS2 Navigation Stack (Nav2) and SLAM to allow the robot to e
 3. **Run the Exploration Algorithm**:
    ```bash
    source ~/ros2_ws/install/setup.bash && 
+   source /etc/turtlebot4/setup.bash &&
    ros2 run autonomous_exploration control_tb4
    ```
 
