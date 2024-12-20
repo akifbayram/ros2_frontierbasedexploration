@@ -1,14 +1,15 @@
 # Frontier Based Autonomous Exploration with ROS2
 
-This project implements an autonomous, frontier-based exploration algorithm using ROS2.
+This project implements an autonomous, frontier-based exploration algorithm using ROS2. The robot navigates toward frontier points—the boundaries between explored and unexplored areas—to efficiently map its environment.
 
-Based on the [work](https://github.com/abdulkadrtr/ROS2-FrontierBaseExplorationForAutonomousRobot) by [abdulkadrtr](https://github.com/abdulkadrtr).
+Based on the [original work](https://github.com/abdulkadrtr/ROS2-FrontierBaseExplorationForAutonomousRobot) by [abdulkadrtr](https://github.com/abdulkadrtr).
 
 ---
 
 ## Overview
 
-The algorithm uses ROS2 Navigation Stack (Nav2) and SLAM to allow the robot to explore by navigating to frontiers—the boundaries between explored and unexplored areas—thus building a map of the environment.
+The algorithm uses the ROS2 Navigation Stack (Nav2) and SLAM to enable the robot to autonomously explore and build a map of its environment by continually identifying and traveling to frontier points. During the exploration process, the total exploration time is appended to a CSV file named `fbae_goal_times.csv`.
+
 
 <img src="exploration.gif" width=550px>
 
@@ -35,7 +36,7 @@ The algorithm uses ROS2 Navigation Stack (Nav2) and SLAM to allow the robot to e
    git clone https://github.com/akifbayram/ros2_frontierbasedexploration.git
    ```
 
-2. **Build and source the Workspace**:
+2. **Build and Source the Workspace**:
    ```bash
    cd ~/ros2_ws
    colcon build
@@ -43,11 +44,13 @@ The algorithm uses ROS2 Navigation Stack (Nav2) and SLAM to allow the robot to e
    source ~/ros2_ws/install/setup.bash
    ```
 
+---
+
 ## Unitree Go2
 
 1. **Launch go2_ros2_sdk**:
 
-   Update the go2_ros2_sdk source directory.
+   Update the go2_ros2_sdk source directory if needed.
 
    ```bash
    source ~/ros2_ws/install/setup.bash &&  
@@ -62,13 +65,12 @@ The algorithm uses ROS2 Navigation Stack (Nav2) and SLAM to allow the robot to e
    source ~/ros2_ws/install/setup.bash && 
    ros2 run autonomous_exploration control_go2
    ```
+
 ---
 
 ## TurtleBot 4 Simulation
 
 1. **Launch the Simulation**:
-
-
    ```bash
    source /etc/turtlebot4/setup.bash && 
    ros2 launch turtlebot4_ignition_bringup turtlebot4_ignition.launch.py slam:=true nav2:=true rviz:=false world:=maze
@@ -92,18 +94,13 @@ The algorithm uses ROS2 Navigation Stack (Nav2) and SLAM to allow the robot to e
    ros2 run autonomous_exploration control_tb4
    ```
 
-### OPTIONAL: Nav2 Configuration
+**Optional Nav2 Configuration**: To avoid path planning through unknown areas, edit `/opt/ros/humble/share/turtlebot4_navigation/config/nav2.yaml`:
 
-Modify Nav2 parameters to prevent path planning through unknown areas:
-
-**File**: `/opt/ros/humble/share/turtlebot4_navigation/config/nav2.yaml`
-
-**Change**:
 ```yaml
 planner_server:
   ros__parameters:
     GridBased:
-      allow_unknown: false  # Set from true to false
+      allow_unknown: false
 ```
 
 ---
@@ -134,8 +131,9 @@ planner_server:
    source ~/ros2_ws/install/setup.bash &&
    ros2 run rviz2 rviz2 -d ~/ros2_ws/src/autonomous_exploration/rviz/tb3.rviz
    ```
+
 ---
 
 ## Acknowledgments
 
-Based heavily on work by [abdulkadrtr](https://github.com/abdulkadrtr).
+Based heavily on the work by [abdulkadrtr](https://github.com/abdulkadrtr).
