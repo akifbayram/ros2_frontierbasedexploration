@@ -13,6 +13,7 @@ from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from visualization_msgs.msg import Marker, MarkerArray
 from std_msgs.msg import Header
+from autonomous_exploration.timer import GoalTimer
 
 with open("autonomous_exploration/config/params.yaml", 'r') as file:
     params = yaml.load(file, Loader=yaml.FullLoader)
@@ -180,7 +181,6 @@ def frontierB(matrix):
                 elif j < len(matrix[i])-2 and matrix[i][j+2] < 0:
                     matrix[i][j] = 2
     return matrix
-
 
 def assign_groups(matrix):
     group = 1
@@ -393,6 +393,8 @@ class navigationControl(Node):
         self.frontier_cloud_publisher = self.create_publisher(PointCloud2, 'frontier_points', 10)
         self.centroid_marker_publisher = self.create_publisher(MarkerArray, 'centroid_markers', 10)
 
+        # Initialize the GoalTimer
+        self.goal_timer = GoalTimer(self, csv_filename='fbae_goal_times.csv')
 
     def exploration_loop(self):
         twist = Twist()
@@ -403,6 +405,7 @@ class navigationControl(Node):
         if self.kesif:
             if self.start_time is None:
                 self.start_time = time.perf_counter()
+                self.goal_timer.start()  # Start the timer
                 print("[INFO] Exploration started.")
                 
             column = int((self.x - self.originX) / self.resolution)
@@ -416,6 +419,12 @@ class navigationControl(Node):
                 self.end_time = time.perf_counter()
                 self.total_exploration_time = self.end_time - self.start_time
                 print(f"[INFO] Total Exploration Time: {self.total_exploration_time:.2f} seconds")
+
+                # Stop the GoalTimer and record the time
+                elapsed_time = self.goal_timer.stop(success=True)
+                if elapsed_time is not None:
+                    print(f"[INFO] Exploration time recorded: {elapsed_time:.2f} seconds")
+
                 rclpy.shutdown()
             else:
                 goal_x = self.path[-1][0]
