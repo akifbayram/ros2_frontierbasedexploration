@@ -6,6 +6,9 @@ setup(
     name=package_name,
     version='0.0.0',
     packages=[package_name],
+    py_modules=[
+        'autonomous_exploration.timer',
+    ],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -24,6 +27,7 @@ setup(
             'control_tb3 = autonomous_exploration.control_tb3:main',
             'control_tb4 = autonomous_exploration.control_tb4:main',
             'voronoi_tb4 = autonomous_exploration.voronoi_tb4:main',
+            'timer = autonomous_exploration.timer:main',
         ],
     },
 )

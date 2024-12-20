@@ -16,6 +16,8 @@ from rclpy.action import ActionClient, CancelResponse
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import Quaternion
 
+from autonomous_exploration.timer import GoalTimer
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -63,23 +65,6 @@ def frontierB(matrix):
     logger.debug("Frontier detection completed")
     return matrix
 
-def assign_groups(matrix):
-    group_id = 1
-    groups = []
-    visited = np.zeros_like(matrix, dtype=bool)
-    height, width = matrix.shape
-    for i in range(height):
-        for j in range(width):
-            if matrix[i][j] == 2 and not visited[i][j]:
-                group_cells = []
-                dfs(matrix, i, j, visited, group_cells)
-                if group_cells:
-                    centroid = calculate_centroid([p[0] for p in group_cells], [p[1] for p in group_cells])
-                    groups.append((group_id, group_cells, centroid))
-                    group_id += 1
-    logger.debug(f"Assigned {len(groups)} groups with centroids.")
-    return matrix, groups
-
 def dfs(matrix, i, j, visited, group_cells):
     stack = [(i, j)]
     height, width = matrix.shape
@@ -99,12 +84,6 @@ def dfs(matrix, i, j, visited, group_cells):
         ]
         stack.extend(neighbors)
 
-def fGroups(groups):
-    sorted_groups = sorted(groups, key=lambda x: len(x[1]), reverse=True)
-    top_groups = [g for g in sorted_groups if len(g[1]) > 2]
-    logger.debug(f"Top groups selected: {[g[0] for g in top_groups]}")
-    return top_groups
-
 def calculate_centroid(x_coords, y_coords):
     n = len(x_coords)
     if n == 0:
@@ -113,6 +92,29 @@ def calculate_centroid(x_coords, y_coords):
     mean_y = sum(y_coords) / n
     centroid = (int(mean_x), int(mean_y))
     return centroid
+
+def assign_groups(matrix):
+    group_id = 1
+    groups = []
+    visited = np.zeros_like(matrix, dtype=bool)
+    height, width = matrix.shape
+    for i in range(height):
+        for j in range(width):
+            if matrix[i][j] == 2 and not visited[i][j]:
+                group_cells = []
+                dfs(matrix, i, j, visited, group_cells)
+                if group_cells:
+                    centroid = calculate_centroid([p[0] for p in group_cells], [p[1] for p in group_cells])
+                    groups.append((group_id, group_cells, centroid))
+                    group_id += 1
+    logger.debug(f"Assigned {len(groups)} groups with centroids.")
+    return matrix, groups
+
+def fGroups(groups):
+    sorted_groups = sorted(groups, key=lambda x: len(x[1]), reverse=True)
+    top_groups = [g for g in sorted_groups if len(g[1]) > 2]
+    logger.debug(f"Top groups selected: {[g[0] for g in top_groups]}")
+    return top_groups
 
 def costmap(data, width, height, resolution):
     data = np.array(data).reshape(height, width)
@@ -190,6 +192,9 @@ class navigationControl(Node):
         # Define goal tolerance
         self.goal_tolerance = 0.5  # Acceptable distance to consider goal reached
 
+        # Initialize the GoalTimer
+        self.goal_timer = GoalTimer(self, csv_filename='gdae_goal_times.csv')
+
     def exploration_loop(self):
         if not hasattr(self, 'map_data') or not hasattr(self, 'odom_data') or not hasattr(self, 'scan_data'):
             logger.debug("Waiting for map, odom, and scan data")
@@ -197,6 +202,8 @@ class navigationControl(Node):
 
         if self.start_time is None:
             self.start_time = time.perf_counter()
+            # Start the GoalTimer when exploration starts
+            self.goal_timer.start()
             logger.info("[INFO] Exploration started.")
 
         column = int((self.x - self.originX) / self.resolution)
@@ -222,6 +229,12 @@ class navigationControl(Node):
                 self.end_time = time.perf_counter()
                 self.total_exploration_time = self.end_time - self.start_time
                 logger.info(f"[INFO] Total Exploration Time: {self.total_exploration_time:.2f} seconds")
+
+                # Stop the GoalTimer and record the time in the CSV file
+                elapsed_time = self.goal_timer.stop(success=True)
+                if elapsed_time is not None:
+                    logger.info(f"[INFO] Exploration time recorded: {elapsed_time:.2f} seconds")
+
                 rclpy.shutdown()
             return
 
@@ -249,7 +262,7 @@ class navigationControl(Node):
             logger.debug("[INFO] Continuing with current goal")
 
     def cancel_current_goal(self):
-        if self.goal_handle_future is not None and not self.goal_handle_future.done():
+        if hasattr(self, 'goal_handle_future') and self.goal_handle_future is not None and not self.goal_handle_future.done():
             self.goal_handle_future.cancel()
         elif self.goal_handle is not None:
             cancel_future = self.goal_handle.cancel_goal_async()
